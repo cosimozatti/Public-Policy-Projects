@@ -1,0 +1,429 @@
+---
+title: "Investigation on the Impact of Tertiary Education on Life Expectancy"
+authors: Grandi, Maccaferri, Zatti, Erling
+format: pdf
+editor: visual
+output:
+  html_document:
+    code_folding: hide
+execute:
+  echo: false
+---
+
+------------------------------------------------------------------------
+
+### Big Data For Social Sciences Project
+
+University of Bologna
+
+Professor Nicola Barban
+
+A.Y. 2024/2025
+
+------------------------------------------------------------------------
+
+Authored by:
+
+-   Francesco Grandi - 0001071804 - francesco.grandi6\@studio.unibo.it
+
+-   Tommaso Maccaferri - 0001071630 - tommaso.maccaferri\@studio.unibo.it
+
+-   Cosimo Zatti - 001068010 - cosimo.zatti\@studio.unibo.it
+
+-   Johannes Erling - 0001073471 - johannes.erling\@studio.unibo.it
+
+*The work in this project was equally divided.*
+
+------------------------------------------------------------------------
+
+### Research Question
+
+Despite rapid technological advancements and increasing global awareness, significant health and living standard disparities persist across nations. A good indicator of different health standards between countries is the comparison of their life expectancy. While numerous factors determine how long a person lives on average, we were specifically curious about the role education plays in shaping these outcomes. We hypothesize that higher tertiary education enrollment positively influences life expectancy, while other socioeconomic factors like GDP per capita, health expenditure, and fertility rates also contribute significantly to health outcomes. By identifying these relationships, we aim to uncover actionable insights for potentially enhancing global health outcomes.
+
+### Dataset Source and Description
+
+The data used for this research comes from reliable online source Kaggle, and contains detailed information on various economic, health, and demographic indicators of different countries.
+
+-   **Primary dataset**: "[Global Country Information Dataset 2023: A Comprehensive Dataset Empowering In-Depth Analysis and Cross-Country Insights](https://www.kaggle.com/datasets/nelgiriyewithana/countries-of-the-world-2023?resource=download)".
+
+    The original dataset, downloaded from Kaggle, featured 35 variables. For the purpose of our investigation, we reduced the dataset's variables, ending up with a dataset composed by the following:
+
+    | Variable | Type of Variable | Description of Variable |
+    |----|----|----|
+    | Country | Nominal | Name of the country |
+    | Fertility Rate | Continuous | Average number of children born to a woman during her lifetime |
+    | GDP | Continuous | Gross Domestic Product, the total value of goods and services produced in the country |
+    | Gross Tertiary Education Enrollment (%) | Continuous | Gross enrollment ratio for tertiary education. Chosen as a proxy for education access and quality, hypothesized to enhance health literacy and outcomes. |
+    | Life Expectancy | Continuous | Average number of years a newborn is expected to live |
+    | Out-of-Pocket Health Expenditure (%) | Continuous | Percentage of total health expenditure paid out-of-pocket by individuals. Included to capture financial barriers to healthcare access, which might inversely affect life expectancy. |
+    | Population | Continuous | Total population of the country |
+
+### Dataset Preparation
+
+After importing the data, it was reviewed to identify any missing values. Imputation methods were applied to fill in the gaps and ensure dataset completeness. Subsequently, transformations were performed to merge the variables of interest and facilitate comparative analyses.
+
+Then we calculate GDP per capita by dividing the countries’ GDP by their population. This makes wealth data comparable across countries, which is essential for examining its relationship with education and life expectancy.
+
+```{r}
+#| message: false
+#| warning: false
+
+# Load necessary libraries
+library(tidyverse)
+library(GGally)
+library(broom)
+library(ggrepel)
+library(cluster)
+library(factoextra)
+library(gridExtra)
+library(plotly)
+library(dplyr)
+library(tidyr)
+library(corrplot)
+library(gt)
+library(maps)
+
+# Loading and viewing the data
+imported_dataset <- read_csv("world-data-2023.csv")
+
+# Data preparation
+#Add the column of GDP per capita "GDPPC" and
+#using mutate to add the column and the funcion as.numeric 
+#to have numeric variables for GDP values and
+#keeping the variables that we are going to use 
+#for our analyses
+
+world_data_2023 <- imported_dataset %>%
+  mutate(
+    GDP = as.numeric(gsub("[^0-9.]", "", GDP)),,
+    Population = as.numeric(Population), 
+    GDPPC = GDP / Population
+  ) %>%
+  select(Country, `Fertility Rate`, 
+         `Gross tertiary education enrollment (%)`, 
+         `Life expectancy` , 
+         `Out of pocket health expenditure`,
+         GDPPC)
+
+world_data_2023 <- world_data_2023 %>%
+  select(Country, `Fertility Rate`, 
+         `Gross tertiary education enrollment (%)`, 
+         `Life expectancy` , 
+         `Out of pocket health expenditure`,GDPPC)
+
+```
+
+### Analysis
+
+#### Correlations and Relationships
+
+The average life expectancy was analyzed in relation to the gross tertiary education enrollment (%); in particular a correlation analysis was conducted to examine the association between tertiary education and other socioeconomic variables.
+
+We can observe a high positive correlation between education enrollment and life expectancy with a correlation coefficient of 0.73. This supports the hypothesis that education is a significant driver of health outcomes.
+
+There is a strong negative relationship between education enrollment and the fertility rate. (-0.69) An even stronger negative correlation (-0.85) can be witnessed between life expectancy and the fertility rate. These findings might reflect a demographic transition. Countries with better education and health outcomes tend to have lower fertility rates.
+
+```{r}
+
+#Transforming % in numeric varibles
+options(repos = c(CRAN = "https://cran.r-project.org"))
+world_data_2023 <- world_data_2023 %>%
+  mutate(
+`Gross tertiary education enrollment (%)` = 
+  as.numeric(gsub("[^0-9.]", "", 
+  `Gross tertiary education enrollment (%)`)),
+`Life expectancy` = as.numeric(gsub("[^0-9.]", "", 
+  `Life expectancy`)),
+GDPPC = as.numeric(GDPPC),
+`Out of pocket health expenditure` = 
+  as.numeric(gsub("[^0-9.]", "", 
+  `Out of pocket health expenditure`)),
+`Fertility Rate` = as.numeric(gsub("[^0-9.]", "", 
+  `Fertility Rate`))
+)
+
+world_data_2023 <- world_data_2023 %>%
+  mutate(
+`Gross tertiary education enrollment (%)` = 
+  as.numeric(`Gross tertiary education enrollment (%)`),
+`Life expectancy` = as.numeric(`Life expectancy`),
+GDPPC = as.numeric(GDPPC),
+`Out of pocket health expenditure` = 
+  as.numeric(`Out of pocket health expenditure`),
+`Fertility Rate` = as.numeric(`Fertility Rate`)
+)
+  
+# Calculating correlations
+cor_matrix <- cor(world_data_2023 %>% 
+  select(`Gross tertiary education enrollment (%)`, 
+          `Life expectancy`, GDPPC, 
+         `Out of pocket health expenditure`, 
+         `Fertility Rate`
+), use = "complete.obs"
+) 
+
+#Conversion of the correlation matrix into a dataframe
+cor_matrix_df <- as.data.frame(cor_matrix) %>%
+  rownames_to_column(var = "Variable") %>%
+  as_tibble()
+
+#Table of Correlation Matrix Data
+cor_matrix_df %>%
+  gt() %>%
+  tab_header(
+    title = "Correlation Matrix Data"
+  ) %>%
+  cols_label(
+    `Gross tertiary education enrollment (%)` = "Tertiary Edu Enroll",
+    `Life expectancy` = "Life Expectancy",
+    GDPPC = "GDPPC",
+    `Out of pocket health expenditure` = "Health Expenditure",
+    `Fertility Rate` = "Fertility Rate"
+  ) %>%
+  tab_style(
+    style = cell_text(size = "x-small"),
+    locations = cells_body()
+  ) %>%
+  tab_style(
+    style = cell_text(size = "x-small"),
+    locations = cells_column_labels()
+  )
+```
+
+```{r}
+#Correlation Matrix visualization
+corrplot(cor_matrix, method = "circle", type = "lower",
+    tl.col = "black", tl.srt = 45, 
+    tl.cex = 0.8, 
+    cl.cex = 0.5, 
+    col = colorRampPalette(c("blue", "white", "red"))(200),
+    title = "Correlation Matrix", 
+    mar = c(0, 0, 1, 0))
+```
+
+#### Visualizations
+
+Scatter plot were created to illustrate the relationship between tertiary education enrollment and life expectancy. The logarithmic regression line highlights the diminishing marginal returns of the effect of education on life expectancy. While life expectancy increases with education, the impact diminishes at higher levels. This suggests additional factors might play a more significant role in already highly educated countries.
+
+```{r}
+#Dropping NAs
+world_data_2023_filtered <- world_data_2023 %>%
+  drop_na()
+
+# Scatter plot
+ggplot(world_data_2023_filtered, 
+       aes(x = `Gross tertiary education enrollment (%)` , 
+           y = `Life expectancy`)) +
+  geom_point(color = "blue") +
+  geom_smooth(method = "lm", formula = y ~ log(x),
+              color = "red", se = TRUE) +
+  labs(title = 
+   "Relationship between Tertiary Education and Life Expectancy",
+       x = "Tertiary Education Enrollment",
+       y = "Life Expectancy") +
+  theme_minimal()
+```
+
+### PCA and Clustering
+
+To reduce the dimensionality of the dataset and identify complex patterns, a principal component analysis (PCA) was performed. The first principal component (PC1) explains 63.1% of the total variance, while the second one (PC2) explains 18.8%. These components are linear combinations of the original variables and represent two new orthogonal dimensions. PC1 reflects what could be considered overall "development," summarizing variables like education, life expectancy (positive contributions), and fertility rate (negative contribution). PC2 captures economic spending patterns, distinguishing countries by GDP per capita and out-of-pocket health expenditure. So the results showed that education significantly contributes to the variance explained in the principal components.
+
+```{r}
+# Performing PCA
+pca_results <- prcomp(world_data_2023_filtered %>% 
+      select(- Country), scale = TRUE)
+summary(pca_results)
+
+pca_results %>%  tidy(matrix = "rotation")
+pca_results %>%  tidy(matrix = "eigenvalues")
+
+pca_worlddata_df <- pca_results %>% 
+  broom::augment(world_data_2023_filtered)
+pca_worlddata_df <- pca_worlddata_df %>% 
+  select(- .rownames)
+
+```
+
+**PCA Biplot**
+
+The Biplot shows again that wealthier countries, with higher health spending, also tend to have higher education and life expectancy. This suggests that economic factors complement education in achieving better health outcomes. The separation of countries in the biplot reflects different development levels, with those closer to the education and life expectancy arrows likely representing more developed nations.
+
+```{r}
+#PCA biplot visualization
+# Install and load factoextra
+#install.packages("factoextra")
+library(factoextra)
+
+# Visualize the PCA biplot
+fviz_pca_biplot(pca_results, 
+                geom = c("point"), 
+                pointsize = 2, 
+                col.var = "blue", 
+                col.ind = "red", 
+                title = "PCA Biplot", 
+                repel = TRUE) 
+```
+
+**Optimal number of clusters**
+
+By using the "elbow rule" we determine the ideal number of clusters which here lies between two and three. Therefore, we do two cluster plots, one with K=2 and one with K=3.
+
+```{r}
+#Using the two principal components of PCA to cluster
+pca_data <- as.data.frame(pca_results$x[, 1:2])
+
+
+#Elbow method
+fviz_nbclust(pca_data, kmeans, method = "wss")
+```
+
+**Cluster Plots**
+
+In the plot with three clusters, cluster number three likely resembles low-income countries with low education and life expectancy, and high fertility rates. The first cluster represents populations with high-income, high education and high life expectancy, while having low fertility rates. Cluster number two is made up of middle-income countries with moderate metrics. In the cluster plot with K=2, these countries with more moderate metrics are split up between the other two.
+
+```{r}
+#k-means 2 on PCA data
+kmeans2_result_pca <- kmeans(pca_data, centers = 2, nstart = 25)
+
+# Visualizing the cluster on PCA data with k=2
+print(fviz_cluster(kmeans2_result_pca, 
+                   data = pca_data,
+                   geom = "point",
+                   ellipse.type = "convex",
+                   palette = "jco",
+                   ggtheme = theme_minimal(),
+                   main = "Cluster Plot on PCA Data with K=2"))         
+                       
+#k-means 3 on PCA data
+kmeans3_result_pca <- kmeans(pca_data, centers = 3, nstart = 25)             
+
+# Visualizing the cluster on PCA data with k=3
+print(fviz_cluster(kmeans3_result_pca, 
+             data = pca_data,
+             geom = "point",
+             ellipse.type = "convex",
+             palette = "jco",
+             ggtheme = theme_minimal(),
+             main = "Cluster Plot on PCA Data with K=3"))
+
+ pca_worlddata_df <-  pca_worlddata_df %>% 
+   mutate(cluster = as_factor(kmeans3_result_pca$cluster)) 
+  
+ pca_worlddata_df %>% 
+  ggplot(aes(x = .fittedPC1, y = .fittedPC2, color = cluster)) +
+  geom_point() +
+  labs(title = 'Clustered PCA Plot', 
+       x = 'PC1', y = 'PC2', color = "Cluster") +
+  theme_minimal()
+```
+
+**Box Plots**
+
+The boxplots underline the clear differences between clusters, showing that countries with higher education enrollment tend to have higher life expectancy and lower fertility rates, aligning with the research question. GDP per capita and health expenditure are also higher in clusters with better education and health outcomes, suggesting that economic factors further enhance these relationships. Conversely, the cluster with the lowest education enrollment demonstrates significantly lower life expectancy and higher fertility, highlighting the strong link between education and demographic trends.
+
+```{r}
+#Boxplot and pivot longer table
+pca_worlddata_df_long <-pca_worlddata_df %>%
+  pivot_longer(cols = -c(Country, cluster, ), 
+  names_to = "Variable", values_to = "Value") 
+print(pca_worlddata_df_long)
+
+pca_worlddata_df_long %>% 
+  filter(!str_starts(Variable, ".fitted")) %>% 
+ ggplot(aes(x = cluster, y = Value, fill = cluster)) +
+  geom_boxplot() +
+  facet_wrap(~ Variable, scales = "free_y") +
+  theme_minimal() +
+  labs(title = "Box Plots of Each Variable by Cluster",
+       x = "Cluster", y = "Value") +
+  theme(legend.position = "none")
+ 
+
+```
+
+### Mapping
+
+The first map presents gross tertiary education enrollment rates worldwide, with darker colors signifying higher participation in higher education. This metric serves as a proxy for the strength of a country’s educational infrastructure, economic development, and investment in human capital, while lighter regions indicate areas where limited access to tertiary education may hinder socio-economic progress. The second map illustrates global life expectancy, providing a visual representation of disparities in health outcomes across countries. Darker regions indicate higher life expectancy, often associated with advanced healthcare systems, better living conditions, and effective public health policies, whereas lighter regions highlight areas with lower life expectancy, reflecting socio-economic challenges and limited healthcare access. The third map combines normalized data on life expectancy and GDP per capita to produce a composite score, highlighting countries that achieve a balance between health and economic prosperity. The visualization identifies the best countries that combine high life expectancy, which often reflects a strong healthcare system and quality of life, with high GDP per capita, which suggests access to commodities such as advanced public transportation, commercial activities, and technological progress. Several South American and North African countries exhibit life expectancies nearly comparable to those of North America and Europe; however, when GDP per capita is considered, these countries fall behind in economic wealth and technological advancement, underscoring global inequalities in these dimensions.
+
+```{r}
+world_map <- map_data("world")
+
+#Preparing the dataset for the merging
+world_map <- world_map %>%
+  rename(Country = region) %>% 
+  mutate(Country = case_when(
+    Country == "USA" ~ "United States",
+    Country == "UK" ~ "United Kingdom",
+    Country %in% c("Trinidad", "Tobago") ~ "Trinidad and Tobago",
+    TRUE ~ Country
+  ))
+
+#Merging the world_map data set with our dataset, and removing Countries 
+#with NA in the interested variables
+merged_data_map <- world_map %>%
+  left_join(world_data_2023_filtered, by = "Country") %>% 
+  drop_na(`Fertility Rate`, 
+          `Gross tertiary education enrollment (%)`, 
+          `Life expectancy`, 
+          `Out of pocket health expenditure`, 
+          GDPPC)
+
+# Plot for Gross Tertiary Education Enrollment
+ggplot(merged_data_map, aes(long, lat, group = group)) +
+  geom_polygon(aes(fill = `Gross tertiary education enrollment (%)`), color = "white") +
+  scale_fill_viridis_c(option = "C", na.value = "gray", name = "Tertiary Edu Enrollment", direction = -1) +
+  labs(title = "Gross Tertiary Education Enrollment Worldwide") +
+  theme_minimal() +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank())
+
+#Plot for Life Expectancy
+ggplot(merged_data_map, aes(long, lat, group = group)) +
+  geom_polygon(aes(fill = `Life expectancy`), color = "white") +
+  scale_fill_viridis_c(option = "C", na.value = "gray", name = "Life Expectancy", direction = -1) +
+  labs(title = "Life Expectancy Worldwide") +
+  theme_minimal() +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank())
+
+# Normalize variables to a 0-1 range, and then create a composite score to have a ranking from 0 to 2, where 2 is the best result so the best country to live after retirement for example
+norm_data_map <- merged_data_map %>%
+  mutate(
+    Life_expectancy_norm = (`Life expectancy` - min(`Life expectancy`, na.rm = TRUE)) /
+                            (max(`Life expectancy`, na.rm = TRUE) - min(`Life expectancy`, na.rm = TRUE)),
+    GDPPC_norm = (GDPPC - min(GDPPC, na.rm = TRUE)) /
+                  (max(GDPPC, na.rm = TRUE) - min(GDPPC, na.rm = TRUE)),
+    Composite_score = Life_expectancy_norm + GDPPC_norm
+  )
+
+#Plot
+ggplot(norm_data_map, aes(long, lat, group = group)) +
+  geom_polygon(aes(fill = Composite_score), color = "white") +
+  scale_fill_viridis_c(option = "C", na.value = "gray", name = "Composite Score", direction = -1) +
+  labs(title = "Best Countries: Life Expectancy and GDPPC") +
+  theme_minimal() +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "right"
+  )
+```
+
+### Conclusions
+
+The main part of our initial research question aimed to get a deeper understanding of the interplay between the average education level and the quality of life in different countries. As these factors are both highly connected with other decisive variables, we decided to include also life expectancy, the countries respective fertility rates and their out-of-pocket health expenditure. This turned out to be a fruitful measure as we found strong positive correlations not only between GDPPC and the Gross tertiary education enrolment, but also between these two variables and life expectancy. All of these were negatively correlated with the out-of-pocket health expenditure and with the fertility rates, whereby the correlations with the latter were especially strong.
+
+We established these patterns, doing a correlation analysis of which we illustrated the results, using a correlation matrix. To highlight the strong positive correlation between our two main variables of interest, GDPPC and tertiary education enrolment, we used a scatterplot.
+
+In order to reduce the complexity of the dataset and to be able to see more complex patterns we performed a Principal Component Analysis. We focused on PC1 and PC2 which explained respectively 63.1% and 18.84% of the variance in the data set. These orthogonal variables represent overall development of countries (PC1) and their economic spending patterns (PC2). Since the elbow method suggested a value between two and three clusters, we tried both options. This resulted in different clusters that represent combinations of countries grouped according to what could be generally referred to as their level of wealth and development.
+
+All of these instruments helped us to confirm our initial assumption that there is a strong link between a country’s education standard and its wealth. Since also our other supposition, the interconnectedness with other factors, could be confirmed, there is proof of the high complexity of effects that these variables have on one another. Although we should be prudent in drawing causal conclusions from this study, the evidence highlights the critical importance of education as a driver of development. Ultimately, this research serves as a reminder that effective allocation of aid to struggling countries must be informed by comprehensive statistical analysis. Without this, the intricate relationships among factors such as education, health, and economic resources risk being overlooked, potentially leading to misguided interventions.
+
+#### Limitations
+
+Despite its strengths, our analysis has several limitations. First, the cross-sectional nature of the dataset does not allow us to infer causality, meaning we can only identify correlations rather than determine the direction or strength of causal relationships. Additionally, some important variables, such as healthcare quality, political stability, and cultural influences, were not included in our dataset but likely play a significant role in shaping the observed outcomes. Furthermore, the imputation of missing data, while necessary for completeness, may introduce biases that could affect the robustness of our results. Finally, the global averages we examined may obscure within-country disparities, which would require a more granular analysis to uncover.
+
+In conclusion, while this study highlights the significance of education and its interplay with other development indicators, it also underscores the need for future research that incorporates more comprehensive datasets and longitudinal approaches to better understand the causal mechanisms at play.
