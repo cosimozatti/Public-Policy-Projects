@@ -5,7 +5,7 @@ It includes a Quarto report analyzing global data from 2023, using R for data ma
 
 ## Files in this repository
 
-- `Big Data Project_complete.qmd` — main Quarto document
+- `Big Data Project_Investigation on the Impact of Tertiary Education on Life Expectancy` — main Quarto document
 - `Investigation on the Impact of Tertiary
 Education on Life Expectancy` — rendered version of the report
 - `world-data-2023.csv` — dataset used in the analysis
@@ -37,4 +37,4 @@ To re-render the report:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/Tollo4/Project-BDSS.git
+   git clone https://github.com/cosimozatti/Public-Policy-Projects
