@@ -9,8 +9,6 @@ It includes a Quarto report analyzing global data from 2023, using R for data ma
 - `Investigation on the Impact of Tertiary
 Education on Life Expectancy` — rendered version of the report
 - `world-data-2023.csv` — dataset used in the analysis
-- `images/` — folder with charts or visuals used in the report
-- `Project BD.Rproj` — RStudio project file
 - `README.md` — project description (this file)
 
 ## Tools & Packages
