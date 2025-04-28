@@ -1,4 +1,4 @@
-# Big Data in Social Science Project
+# Big Data for Social Sciences Project
 
 This project was developed for the **Big Data in Social Science** course at the University of Bologna.  
 It includes a Quarto report analyzing global data from 2023, using R for data manipulation and visualization.
