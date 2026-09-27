@@ -66,6 +66,19 @@ class VerifyDraft(unittest.TestCase):
         self.assertEqual(self.lib["cslfixture2022"].page_range(), (1, 20))
 
 
+class Figures(unittest.TestCase):
+    def figs(self, text):
+        return vc.FIGURE_RE.search(vc.STAT_LEVEL_RE.sub(" ", text))
+
+    def test_statistical_levels_are_not_figures(self):
+        self.assertIsNone(self.figs("The 95% upper bounds are 0.187 and 0.122."))
+        self.assertIsNone(self.figs("None is significant at 5%, and none at the 10% level."))
+
+    def test_data_percentages_still_flagged(self):
+        self.assertIsNotNone(self.figs("Attendance was 60% for math."))
+        self.assertIsNotNone(self.figs("The 95% interval excludes it, but 59% of teachers cite materials."))
+
+
 class Parsing(unittest.TestCase):
     def test_latex_and_pandoc(self):
         c = vc.extract_citations(1, r"See [see @a, pp. 3-4; @b, sec. 2] and \textcite[cf.][7]{c,d} and @e [p. 9].")

@@ -360,7 +360,11 @@ FIGURE_RE = re.compile(
     r"\d+(?:[.,]\d+)?\s?(?:million|billion|trillion|bn|mn)\b|"
     r"\b\d+(?:\.\d+)?\s?(?:times|x)\s+(?:higher|lower|more|less)|"
     r"\bratio of \d|\b\d+:\d+\b)", re.I)
-QUOTE_RE = re.compile(r"[\"“]([^\"”]{25,}?)[\"”]")
+# Statistical conventions, not data: "95% interval", "significant at the 5% level", "at 10%".
+STAT_LEVEL_RE = re.compile(r"\b(?:90|95|99)\s?%\s*(?:confidence|CI\b|interval|upper|lower|bound)|"
+                           r"\b(?:at|significant at|level of)\s+(?:the\s+)?(?:0?\.?\d{1,2})\s?%", re.I)
+QUOTE_RE = re.compile(r"[\"“]([^\"”]{15,}?)[\"”]")
+MIN_QUOTE_WORDS = 4
 MARKER_RE = re.compile(r"\[(?:CITATION NEEDED|SOURCE\?)\]", re.I)
 
 
@@ -682,7 +686,7 @@ def verify_draft(draft: Path, lib: dict, corpus: Corpus, online: bool) -> tuple:
         # direct quotations
         for qm in QUOTE_RE.finditer(s):
             quote = qm.group(1)
-            if len(quote.split()) < 6:
+            if len(quote.split()) < MIN_QUOTE_WORDS:
                 continue
             short = (quote[:70] + "…") if len(quote) > 70 else quote
             if not cites:
@@ -707,8 +711,9 @@ def verify_draft(draft: Path, lib: dict, corpus: Corpus, online: bool) -> tuple:
                 rep.add("WARN", where, f"no source text in the workspace for {', '.join('@' + c.key for c in cites)}; "
                         f"quote unverifiable: \"{short}\"")
         # figures
-        if FIGURE_RE.search(s) and not has_marker:
-            fig = FIGURE_RE.search(s).group(0)
+        fig_match = FIGURE_RE.search(STAT_LEVEL_RE.sub(" ", s))
+        if fig_match and not has_marker:
+            fig = fig_match.group(0)
             if not cites:
                 rep.add("WARN", where, f"figure \"{fig}\" has no citation or [SOURCE?] marker")
             elif not any(LOCATOR_RE.search(c.locator) for c in cites):
