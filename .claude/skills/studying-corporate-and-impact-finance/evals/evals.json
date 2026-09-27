@@ -1,0 +1,23 @@
+{
+  "skill_name": "studying-corporate-and-impact-finance",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Firm has equity beta 1.4, D/E 0.6, debt beta 0.1, tax 25%. It's considering a project in a new division; the pure-play comparable has equity beta 1.2 and D/E 0.3 (debt beta 0). Project will be financed at D/E 0.5, rD 5%, rf 3%, MRP 6%. What discount rate should I use? I got 9.9% but not sure",
+      "expected_output": "Unlevers the comparable (not the firm), relevers at project D/E, states the debt policy assumed, computes rE and WACC with the calculator, locates where the user's 9.9% diverges or confirms it, no chapter citations from memory.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "for MIINT we're looking at a Kenyan pay-as-you-go clean cooking startup raising a $600k seed on a SAFE with a $4m post-money cap. Founders say 12k households and 40% gross margin. can you set up the impact due diligence section and tell us what we still need to verify",
+      "expected_output": "Theory of change with evidence ratings, five-dimension framing flagged [CITATION NEEDED] unless fetched, founder claims kept as company-stated with triangulation plan, post-money SAFE ownership computed (15%), no market figures from memory ([SOURCE?]), asks for the MIINT deliverable template.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "quiz me on APV vs WACC vs FTE, exam is in two weeks",
+      "expected_output": "Asks one question at a time, labels questions as practice, explains the first wrong step after each answer, tracks topics missed.",
+      "files": []
+    }
+  ]
+}
