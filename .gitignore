@@ -1,0 +1,7 @@
+# verify_citations.py PDF text cache
+research/.cache/
+# graphify machine-local files (graph.json and GRAPH_REPORT.md may be committed)
+graphify-out/cache/
+graphify-out/.graphify_*
+graphify-out/needs_update
+__pycache__/
